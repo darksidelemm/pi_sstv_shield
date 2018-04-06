@@ -9,7 +9,7 @@
 * DRA818V/U on shield, with the following connections to the Pi:
 
 DRA818 Pin | Function | RPi Header Pin
---------------------------------------------------
+-----------|----------|---------------
 1 | Squelch | ?? 
 5 | PTT | ??
 6 | Power Down | ??
