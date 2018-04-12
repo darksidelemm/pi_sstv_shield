@@ -17,7 +17,7 @@ except RuntimeError:
 
 # DRA818 GPIO Connections
 DRA818_PTT = 17
-DRA818_SQ = 18
+DRA818_SQ = 18 # Currently we ignore this. Pin 18 also appears to conflict with the PWM outputs used for audio.
 DRA818_HL = 27 # Currently un-used. Leave HL pin floating for 1W output power.
 DRA818_PD = 22 # Currently un-used
 
@@ -63,7 +63,6 @@ def dra818_setup_io():
     GPIO.setup(DRA818_PTT, GPIO.OUT, initial=GPIO.HIGH)
     GPIO.setup(DRA818_HL, GPIO.OUT, initial=GPIO.HIGH)
     GPIO.setup(DRA818_PD, GPIO.OUT, initial=GPIO.HIGH)
-    GPIO.setup(DRA818_SQ, GPIO.IN)
 
 
 def dra818_ptt(enabled):
