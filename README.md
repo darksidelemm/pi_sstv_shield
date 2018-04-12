@@ -21,12 +21,25 @@ DRA818 Pin | Function | RPi Pin Header
 Currently the Squelch, Power-Down and High/Low pins are un-used in this software.
 
 
-### Software
-The scripts in this repository have the following dependencies:
+### Software Dependencies
 
-* 'sox' or some other audio player utility. 
-* Python (2/3)
-  * pyserial - obtain using distro package manager, i.e. `sudo apt-get install python-serial`
-  * pySSTV  - obtain via pip, i.e. `sudo pip install pySSTV`
+Obtain most of the dependencies via apt-get:
+```
+$ sudo apt-get install sox imagemagick python-pip python-serial python-picamera python-rpi.gpio
+```
+
+Then, use pip to install the remaining dependencies:
+```
+$ sudo pip install pySSTV
+```
 
 
+## Operation
+```
+$ sudo python picam_sstv.py
+```
+
+TODO:
+* Figure out why the Pi stops playing audio after a while (dodgy PWM audio driver probably)
+* Make image transmission non-blocking, so images can be captured and converted while transmission is taking place.
+* Add image overlays.
