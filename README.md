@@ -8,15 +8,17 @@
 
 * DRA818V/U on shield, with the following connections to the Pi:
 
-DRA818 Pin | Function | RPi Header Pin
+DRA818 Pin | Function | RPi Pin Header
 -----------|----------|---------------
-1 | Squelch | ?? 
-5 | PTT | ??
-6 | Power Down | ??
-7 | High/Low Power | ??
+1 | Squelch | 12 (GPIO 18, Active Low)
+5 | PTT | 11 (GPIO 17, Active Low)
+6 | Power Down | Not Used
+7 | High/Low Power | 13 (GPIO 27) - Optional
 9 | GND | <Any ground pin>
-16 | RXD (UART Input) | ??
-17 | TXD (UART Output) | ??
+16 | RXD (UART Input) | 8 (UART0 TX)
+17 | TXD (UART Output) | 10 (UART0 RX)
+
+Currently the Squelch, Power-Down and High/Low pins are un-used in this software.
 
 
 ### Software

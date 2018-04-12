@@ -2,6 +2,7 @@
 #
 # Basic DRA818 Programming
 # Currently only supporting basic TX support, with no tone.
+# Refer command set in: http://www.dorji.com/docs/data/DRA818V.pdf
 #
 # Mark Jessop <vk5qi@rfhead.net>
 #
@@ -9,6 +10,18 @@ import argparse
 import serial
 import time
 
+try:
+    import RPi.GPIO as GPIO
+except RuntimeError:
+    print("ERROR: Could not load RPi GPIO Libraries.")
+
+# DRA818 GPIO Connections
+DRA818_PTT = 17
+DRA818_SQ = 18
+DRA818_HL = 27 # Currently un-used. Leave HL pin floating for 1W output power.
+DRA818_PD = 22 # Currently un-used
+
+# Default Transmitter / Squelch Settings
 MODE = 1 # 1 = FM (supposedly 5kHz deviation), 0 = NFM (2.5 kHz Deviation)
 SQUELCH = 5 # Squelch Value, 0-8
 CTCSS = '0000'
@@ -40,6 +53,30 @@ def dra818_program(port='/dev/ttyAMA0',
     _s.close()
     
     print("Response: %s" % _response.strip())
+
+
+def dra818_setup_io():
+    ''' Configure the RPi IO pins for communication with the DRA818 module '''
+    # All pin definitions are in Broadcom format.
+    GPIO.setmode(GPIO.BCM)
+    # Configure pins, and set initial values.
+    GPIO.setup(DRA818_PTT, GPIO.OUT, initial=GPIO.HIGH)
+    GPIO.setup(DRA818_HL, GPIO.OUT, initial=GPIO.HIGH)
+    GPIO.setup(DRA818_PD, GPIO.OUT, initial=GPIO.HIGH)
+    GPIO.setup(DRA818_SQ, GPIO.IN)
+
+
+def dra818_ptt(enabled):
+    ''' Set the DRA818's PTT on or off '''
+    if enabled:
+        GPIO.output(DRA818_PTT, GPIO.LOW)
+    else:
+        GPIO.output(DRA818_PTT, GPIO.HIGH)
+
+
+def dra818_read_squelch():
+    ''' Read the DRA818 Squelch line. Return True if there is signal detected. '''
+    return not GPIO.input(DRA818_SQ)
 
 
 if __name__ == '__main__':
