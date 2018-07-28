@@ -26,12 +26,16 @@ Note: If you connect the high/low pin to the Raspberry Pi, you must NOT tie this
 
 Obtain most of the dependencies via apt-get:
 ```
-$ sudo apt-get install sox imagemagick python-pip python-serial python-picamera python-rpi.gpio
+$ sudo apt-get install sox imagemagick python-pip python-serial python-picamera python-rpi.gpio python-pil libgd-dev libmagic-dev
 ```
 
-Then, use pip to install the remaining dependencies:
+Now we need to go compile the `pisstvpp` SSTV encoder:
 ```
-$ sudo pip install pySSTV
+$ git clone https://github.com/hatsunearu/pisstvpp.git
+$ cd pisstvpp
+$ make
+$ cp pisstvpp ../
+$ cd ..
 ```
 
 
@@ -72,8 +76,9 @@ Once you are sure this is working, you can run:
 $ sudo python picam_sstv.py
 ```
 
+
 TODO:
 * Do we really need to use sudo? (probably not)
 * Figure out why the Pi stops playing audio after a while (dodgy PWM audio driver probably)
 * Make image transmission non-blocking, so images can be captured and converted while transmission is taking place.
-* Add image overlays.
+* Add image/text overlays.

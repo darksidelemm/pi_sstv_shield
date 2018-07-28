@@ -25,7 +25,7 @@ class SSTVPiCam(object):
 	""" PiCam Wrapper Class	"""
 
 	def __init__(self,
-				tx_mode="PD120", 
+				tx_mode="m1", 
 				num_images=1,
 				image_delay=0.5, 
 				vertical_flip = False, 
@@ -41,7 +41,13 @@ class SSTVPiCam(object):
 			Keyword Arguments:
 			callsign: The callsign to be used when converting images to SSTV. Must be <=6 characters in length.
 			tx_mode: SSTV Mode to transmit using. 
-					Currently only PD120 and PD160 are supported.
+					Valid Modes:
+					m1: Martin 1
+					m2: Martin 2
+					s1: Scottie 1
+					s2: Scottie 2
+					sdx: Scottie dx
+					r36: Robot 36
 
 			num_images: Number of images to capture in sequence when the 'capture' function is called.
 						The 'best' (largest filesize) image is selected and saved.
@@ -68,13 +74,11 @@ class SSTVPiCam(object):
 		self.tx_mode = tx_mode
 		self.ptt_locked = ptt_locked
 
-		if self.tx_mode == "PD120":
-			self.tx_resolution = (640,496)
-		elif self.tx_mode == "PD160":
-			self.tx_resolution = (512,400)
+
+		if self.tx_mode == "r36":
+			self.tx_resolution = (320,240)
 		else:
-			self.tx_resolution = (640,496)
-			self.tx_mode = "PD120"
+			self.tx_resolution = (320,256)
 
 
 		# Attempt to start picam.
@@ -168,7 +172,9 @@ class SSTVPiCam(object):
 			self.debug_message("Convert operation failed!")
 			return "FAIL"
 
-		sstv_convert_command = "python -m pysstv --mode=%s picam_temp.png output.wav" % self.tx_mode
+		# NOTE: The pySSTV library is waaay too slow for use on a Pi Model A...
+		#sstv_convert_command = "python -m pysstv --mode=%s picam_temp.png output.wav" % self.tx_mode
+		sstv_convert_command = "./pisstvpp -p %s -r 22050 picam_temp.png" % self.tx_mode
 
 		self.debug_message("Converting image to SSTV.")
 		return_code = os.system(sstv_convert_command)
@@ -176,7 +182,7 @@ class SSTVPiCam(object):
 			self.debug_message("Failed to convert image to SSTV!")
 			return "FAIL"
 		else:
-			return "output.wav"
+			return "picam_temp.png.wav"
 
 
 	def transmit_image(self, filename="output.wav"):
@@ -297,7 +303,9 @@ if __name__ == "__main__":
 	# Set the DRA818 into high power mode.
 	dra818_high_power(True)
 
-	picam = SSTVPiCam()
+	# Initialize the SSTV Image Capture/Encode class.
+	# Using Martin 2 at the moment.
+	picam = SSTVPiCam(tx_mode="m2")
 
 	picam.run(destination_directory="./tx_images/", 
 		post_process_ptr = post_process
