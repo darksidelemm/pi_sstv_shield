@@ -43,6 +43,11 @@ def dra818_program(port='/dev/ttyAMA0',
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS)
+    # We need to issue this command to be able to send further commands.
+    _s.write("AT+DMOCONNECT\r\n")
+    time.sleep(1.00)
+    _response = _s.readline()
+    print("Connect Response: %s" % _response)
 
     # Send the programming command..
     _s.write(_dmosetgroup)
@@ -61,8 +66,16 @@ def dra818_setup_io():
     GPIO.setmode(GPIO.BCM)
     # Configure pins, and set initial values.
     GPIO.setup(DRA818_PTT, GPIO.OUT, initial=GPIO.HIGH)
-    GPIO.setup(DRA818_HL, GPIO.OUT, initial=GPIO.HIGH)
+    GPIO.setup(DRA818_HL, GPIO.OUT, initial=GPIO.LOW) # WARNING - Do NOT set this pin high. 
     GPIO.setup(DRA818_PD, GPIO.OUT, initial=GPIO.HIGH)
+
+
+def dra818_high_power(enabled):
+    ''' Set the DRA818 to high power by floating the HL input '''
+    if enabled:
+        GPIO.setup(DRA818_HL, GPIO.IN)
+    else:
+        GPIO.setup(DRA818_HL, GPIO.OUT, initial=GPIO.LOW)
 
 
 def dra818_ptt(enabled):
@@ -82,6 +95,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--frequency", type=float, default=146.500, help="Transmit Frequency (MHz)")
     parser.add_argument("--port", type=str, default='/dev/ttyAMA0', help="Serial port connected to module.")
+    parser.add_argument("--test", action="store_true", default=False, help="Test transmitter after programming with 1s of PTT.")
     args = parser.parse_args()
 
     dra818_program(args.port, args.frequency)
+
+    if args.test:
+        dra818_ptt(True)
+        time.sleep(1)
+        dra818_ptt(False)
+
+

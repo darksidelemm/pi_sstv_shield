@@ -294,6 +294,9 @@ if __name__ == "__main__":
 	# Configure IO lines for DRA818
 	dra818_setup_io()
 
+	# Set the DRA818 into high power mode.
+	dra818_high_power(True)
+
 	picam = SSTVPiCam()
 
 	picam.run(destination_directory="./tx_images/", 
