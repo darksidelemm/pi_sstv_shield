@@ -45,7 +45,7 @@ First, configure the DRA818 module to your desired transmit frequency:
 ```
 $ sudo python dra818.py --frequency 146.525
 ```
-You can optionally add `--test` to have the script key the radio up for one second after programming.
+You can optionally add `--test` to have the script key the radio up for one second after programming. Annoyingly we need to use sudo to be able to reliably work with /dev/ttyAMA0. You may need to make a few attempts to get the DRA818 programmed.
 
 ### Setting Volume Levels
 You will need to adjust volume levels into the DRA818 to avoid the audio clipping. Ideally this is done with a deviation monitor (i.e. a service monitor), but you can sometimes do it by ear.
@@ -73,12 +73,11 @@ You will now need a PiCam connected. Check you can capture images using the rasp
 
 Once you are sure this is working, you can run:
 ```
-$ sudo python picam_sstv.py
+$ python picam_sstv.py
 ```
 
 
 TODO:
-* Do we really need to use sudo? (probably not)
 * Figure out why the Pi stops playing audio after a while (dodgy PWM audio driver probably)
 * Make image transmission non-blocking, so images can be captured and converted while transmission is taking place.
 * Add image/text overlays.
