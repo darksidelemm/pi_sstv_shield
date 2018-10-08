@@ -27,11 +27,12 @@ class SSTVPiCam(object):
 	def __init__(self,
 				tx_mode="m1", 
 				num_images=1,
-				image_delay=0.5, 
+				image_delay=0.5,
 				vertical_flip = False, 
 				horizontal_flip = False,
 				temp_filename_prefix = 'picam_temp',
 				ptt_locked = False,
+				post_image_function = None,
 				debug_ptr = None
 				):
 
@@ -71,6 +72,7 @@ class SSTVPiCam(object):
 		self.temp_filename_prefix = temp_filename_prefix
 		self.num_images = num_images
 		self.image_delay = image_delay
+		self.post_image_function = post_image_function
 		self.tx_mode = tx_mode
 		self.ptt_locked = ptt_locked
 
@@ -207,7 +209,7 @@ class SSTVPiCam(object):
 
 
 	auto_capture_running = False
-	def auto_capture(self, destination_directory, post_process_ptr=None, delay = 0):
+	def auto_capture(self, destination_directory, post_process_ptr=None, post_tx_function=None, delay = 0):
 		""" Automatically capture and transmit images in a loop.
 		Images are automatically saved to a supplied directory, with file-names
 		defined using a timestamp.
@@ -220,6 +222,7 @@ class SSTVPiCam(object):
 						  will be passed the path/filename of the captured image.
 						  This can be used to add overlays, etc to the image before it is SSDVified and transmitted.
 						  NOTE: This function need to modify the image in-place.
+		post_tx_function: An optional function which is called after the image has been transmitted.
 		delay:	An optional delay in seconds between capturing images. Defaults to 0.
 				This delay is added on top of any delays caused while waiting for the transmit queue to empty.
 		"""
@@ -259,10 +262,13 @@ class SSTVPiCam(object):
 
 			# Transmit the image. TODO: Make this non-blocking.
 			self.transmit_image(sstv_filename)
+
+			if post_tx_function != None:
+				post_tx_function()
 		# Loop!
 
 
-	def run(self, destination_directory, post_process_ptr=None, delay = 0):
+	def run(self, destination_directory, post_process_ptr=None, post_tx_function=None, delay = 0):
 		""" Start auto-capturing images in a thread.
 
 		Refer auto_capture function above.
@@ -272,7 +278,7 @@ class SSTVPiCam(object):
 		post_process_ptr: An optional function which is called after the image is captured. This function
 						  will be passed the path/filename of the captured image.
 						  This can be used to add overlays, etc to the image before it is SSDVified and transmitted.
-						  NOTE: This function need to modify the image in-place.
+						  NOTE: This function needs to modify the image in-place.
 		delay:	An optional delay in seconds between capturing images. Defaults to 0.
 				This delay is added on top of any delays caused while waiting for the transmit queue to empty.
 		"""		
@@ -282,6 +288,7 @@ class SSTVPiCam(object):
 		capture_thread = Thread(target=self.auto_capture, kwargs=dict(
 			destination_directory=destination_directory,
 			post_process_ptr=post_process_ptr,
+			post_tx_function=post_tx_function,
 			delay=delay))
 
 		capture_thread.start()
@@ -297,6 +304,10 @@ if __name__ == "__main__":
 	def post_process(filename):
 		print("Doing nothing with %s" % filename)
 
+
+	def post_tx():
+		print("Doing nothing after image transmission.")
+
 	# Configure IO lines for DRA818
 	dra818_setup_io()
 
@@ -305,10 +316,15 @@ if __name__ == "__main__":
 
 	# Initialize the SSTV Image Capture/Encode class.
 	# Using Martin 2 at the moment.
-	picam = SSTVPiCam(tx_mode="m2")
+	picam = SSTVPiCam(
+		tx_mode = "s2",
+		num_images = 5
+		)
 
-	picam.run(destination_directory="./tx_images/", 
-		post_process_ptr = post_process
+	picam.run(destination_directory="./tx_images/",
+		post_process_ptr = post_process,
+		post_tx_function = post_tx,
+		delay = 15
 		)
 	try:
 		while True:
