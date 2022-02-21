@@ -203,7 +203,7 @@ class SSTVPiCam(object):
         # PTT On
         dra818_ptt(True)
         # Delay slightly.
-        sleep(0.5)
+        sleep(2)
 
         self.debug_message("Transmitting...")
         tx_command = "aplay %s" % filename
