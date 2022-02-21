@@ -1,5 +1,7 @@
 # Project Horus Raspberry Pi SSTV Shield Project
 
+Scripts to capture photos from a Raspberry Pi Camera, and transmit them via a DRA818 using SSTV modulation.
+This flew on Project Horus's 50th flight. 
 
 ## Dependencies
 ### Hardware
@@ -29,12 +31,15 @@ Obtain most of the dependencies via apt-get:
 $ sudo apt-get install sox imagemagick python-pip python-serial python-picamera python-rpi.gpio python-pil libgd-dev libmagic-dev
 ```
 
-Now we need to go compile the `pisstvpp` SSTV encoder:
+Now we need to go compile the `pisstv` SSTV encoder.
+Note that we use the zouppen fork, as it supports the PD120 mode.
+
+
 ```
-$ git clone https://github.com/hatsunearu/pisstvpp.git
-$ cd pisstvpp
+$ git clone https://github.com/zouppen/pisstv.git
+$ cd pisstv
 $ make
-$ cp pisstvpp ../
+$ cp pisstv ../
 $ cd ..
 ```
 
@@ -46,6 +51,8 @@ First, configure the DRA818 module to your desired transmit frequency:
 $ sudo python dra818.py --frequency 146.525
 ```
 You can optionally add `--test` to have the script key the radio up for one second after programming. Annoyingly we need to use sudo to be able to reliably work with /dev/ttyAMA0. You may need to make a few attempts to get the DRA818 programmed.
+
+The DRA818 should then remember this frequency for all future use.
 
 ### Setting Volume Levels
 You will need to adjust volume levels into the DRA818 to avoid the audio clipping. Ideally this is done with a deviation monitor (i.e. a service monitor), but you can sometimes do it by ear.
@@ -76,8 +83,15 @@ Once you are sure this is working, you can run:
 $ python picam_sstv.py
 ```
 
+### Identing
+The file `ident.wav` will be played every 4 images. Make sure to update this file for your own callsign!
 
-TODO:
+
+### Configuring
+* TODO
+
+### TODOs
+
 * Figure out why the Pi stops playing audio after a while (dodgy PWM audio driver probably)
 * Make image transmission non-blocking, so images can be captured and converted while transmission is taking place.
-* Add image/text overlays.
+* Add image/text overlays (with PD120's resolution this might be practical now...)

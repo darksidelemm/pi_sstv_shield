@@ -17,7 +17,6 @@ from threading import Thread
 from dra818 import *
 import glob
 import os
-import os.path
 import datetime
 import traceback
 
@@ -44,9 +43,12 @@ class SSTVPiCam(object):
             callsign: The callsign to be used when converting images to SSTV. Must be <=6 characters in length.
             tx_mode: SSTV Mode to transmit using. 
                     Valid Modes:
+                    m1: Martin 1
+                    m2: Martin 2
                     s1: Scottie 1
+                    s2: Scottie 2
+                    sdx: Scottie dx
                     r36: Robot 36
-                    pd120: PD120
 
             num_images: Number of images to capture in sequence when the 'capture' function is called.
                         The 'best' (largest filesize) image is selected and saved.
@@ -75,17 +77,11 @@ class SSTVPiCam(object):
         self.ptt_locked = ptt_locked
 
 
-        # Default capture resolution is full-frame Picam 2 images
         self.src_resolution=(3280,2464)
 
         if self.tx_mode == "r36":
-            # Robot 36
             self.tx_resolution = (320,240)
-        elif self.tx_mode == "pd120":
-            # PD120
-            self.tx_resolution = (640,496)
         else:
-            # Scottie 2
             self.tx_resolution = (320,256)
 
 
@@ -94,12 +90,10 @@ class SSTVPiCam(object):
 
         # Configure camera.
         try:
-            self.cam.resolution = self.src_resolution
+            self.cam.resolution = self.src_resolution#self.tx_resolution
         except:
             # Default to Picam 1 max resolution if we cannot set the higher PiCam 2 resolution.
             self.cam.resolution = (2592,1944)
-        
-        # These may need to be changed depending on camera orientation.
         self.cam.hflip = horizontal_flip
         self.cam.vflip = vertical_flip
         self.cam.exposure_mode = 'auto'
@@ -179,13 +173,22 @@ class SSTVPiCam(object):
 
         """
 
-        self.debug_message("Resizing and converting image.")
+        self.debug_message("Resizing image.")
         return_code = os.system("convert %s -resize %dx%d\! picam_temp.png" % (filename, self.tx_resolution[0], self.tx_resolution[1]))
         if return_code != 0:
             self.debug_message("Resize operation failed!")
             return "FAIL"
 
-        sstv_convert_command = "./pisstv -p %s -r 22050 picam_temp.png" % self.tx_mode
+        # Convert to PNG.
+        #self.debug_message("Converting image to PNG.")
+        #return_code = os.system("convert picam_temp.jpg picam_temp.png")
+        #if return_code != 0:
+        #    self.debug_message("Convert operation failed!")
+        #    return "FAIL"
+
+        # NOTE: The pySSTV library is waaay too slow for use on a Pi Model A...
+        #sstv_convert_command = "python -m pysstv --mode=%s picam_temp.png output.wav" % self.tx_mode
+        sstv_convert_command = "./pisstvpp -p %s -r 22050 picam_temp.png" % self.tx_mode
 
         self.debug_message("Converting image to SSTV.")
         return_code = os.system(sstv_convert_command)
@@ -310,32 +313,35 @@ class SSTVPiCam(object):
 
 # Basic transmission test script.
 if __name__ == "__main__":
+
     import subprocess
 
     def post_process(filename):
-        # Currently not doing anything in post-processing
-        # This is where we might add overlays, if we consider it worthwhile.
-        pass
+        print("Doing nothing with %s" % filename)
 
-    # Transmit ident.wav every 4th image, if it exists.
+
+
+    # Additions for VK5ARG Flight
     tx_count = 0
 
     def post_tx():
         global tx_count
 
         if tx_count % 4 == 0:
-            if os.path.isfile('ident.wav'):
-                # Transmit ident.
-                print("Transmitting ident.")
-                # PTT on
-                dra818_ptt(True)
-                time.sleep(0.3)
-                # Send ident
-                _ident_cmd = "aplay ident.wav"
-                subprocess.call(_ident_cmd, shell=True)
-                time.sleep(0.3)
-                # PTT off
-                dra818_ptt(False)
+            # Transmit ident.
+            print("Transmitting ident.")
+            _ident_text = "This is victor kilo five alpha romeo gulf, high altitude balloon payload, transmitting using the Scottie 2 SSTV mode"
+            _espeak_cmd = "espeak \"%s\"" % _ident_text
+            # PTT on
+            dra818_ptt(True)
+            time.sleep(0.3)
+            # Send ident
+            #subprocess.call(_espeak_cmd, shell=True)
+            _ident_cmd = "aplay vk5arg.wav"
+            subprocess.call(_ident_cmd, shell=True)
+            time.sleep(0.3)
+            # PTT off
+            dra818_ptt(False)
 
         tx_count += 1
 
@@ -347,8 +353,9 @@ if __name__ == "__main__":
     dra818_high_power(False)
 
     # Initialize the SSTV Image Capture/Encode class.
+    # Using Martin 2 at the moment.
     picam = SSTVPiCam(
-        tx_mode = "pd120", # Valid modes: s2, r36, pd120
+        tx_mode = "s2",
         num_images = 5
         )
 
