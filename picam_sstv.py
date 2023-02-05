@@ -405,7 +405,7 @@ if __name__ == "__main__":
                     # TODO: Use the GPS fix status values here instead.
                     gps_string = " HIGH ALTITUDE BALLOON"
                 else:
-                    gps_string = " %.5f, %.5f  %dm Altitude" % (
+                    gps_string = " %.5f, %.5f  %dm" % (
                         gps_state['latitude'],
                         gps_state['longitude'],
                         int(gps_state['altitude']))
@@ -422,8 +422,8 @@ if __name__ == "__main__":
         print("Adding text overlay: " + textoverlay)
         img = Image.open(filename)
         I1 = ImageDraw.Draw(img)
-        overlayFont = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf', 18)
-        I1.rectangle([(0,0),(639,20)], fill=(0,0,0), outline=None)
+        overlayFont = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 24)
+        I1.rectangle([(0,0),(639,25)], fill=(0,0,0), outline=None)
         I1.text((20, 1), "%s" % (textoverlay), font=overlayFont, fill=(255, 255, 255))
         img.save(filename)
 
