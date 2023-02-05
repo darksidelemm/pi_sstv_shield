@@ -7,6 +7,7 @@ This flew on Project Horus's 50th flight.
 ### Hardware
 * Raspberry Pi Model A or B 
   * If using a RPi without an audio output socket, you will also need a USB sound card or some other DAC.
+* WARNING WARNING - Raspbian Bullseye will break a RPi Model 3 A+ with 512MB of RAM when you enable legacy camera support. Use Buster for now until I figure out a solution...
 
 * DRA818V/U on shield, with the following connections to the Pi:
 
@@ -28,7 +29,7 @@ Note: If you connect the high/low pin to the Raspberry Pi, you must NOT tie this
 
 Obtain most of the dependencies via apt-get:
 ```
-$ sudo apt-get install sox imagemagick python-pip python-serial python-picamera python-rpi.gpio python-pil libgd-dev libmagic-dev
+$ sudo apt-get install vim git sox imagemagick python3-pip python3-serial python3-picamera python3-rpi.gpio python3-pil libgd-dev libmagic-dev
 ```
 
 Now we need to go compile the `pisstv` SSTV encoder.
@@ -36,8 +37,8 @@ Note that we use the zouppen fork, as it supports the PD120 mode.
 
 
 ```
-$ git clone https://github.com/zouppen/pisstv.git
-$ cd pisstv
+$ git clone https://github.com/zouppen/pisstv.git pisstv_repo
+$ cd pisstv_repo
 $ make
 $ cp pisstv ../
 $ cd ..

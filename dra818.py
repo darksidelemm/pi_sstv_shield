@@ -24,17 +24,17 @@ DRA818_PD = 22 # Currently un-used
 # Default Transmitter / Squelch Settings
 MODE = 1 # 1 = FM (supposedly 5kHz deviation), 0 = NFM (2.5 kHz Deviation)
 SQUELCH = 5 # Squelch Value, 0-8
-CTCSS = '0000'
+CTCSS = b'0000'
 
 def dra818_program(port='/dev/ttyAMA0',
                 frequency=146.500):
     ''' Program a DRA818U/V radio to operate on a particular frequency. '''
 
 
-    _dmosetgroup = "AT+DMOSETGROUP=%d,%3.4f,%3.4f,%s,%d,%s\r\n" % (
+    _dmosetgroup = b"AT+DMOSETGROUP=%d,%3.4f,%3.4f,%s,%d,%s\r\n" % (
         MODE, frequency, frequency, CTCSS, SQUELCH, CTCSS)
 
-    print("Sending: %s" % _dmosetgroup.strip())
+    print("Sending: %s" % str(_dmosetgroup).strip())
 
     # Open serial port
     _s = serial.Serial(
@@ -44,10 +44,10 @@ def dra818_program(port='/dev/ttyAMA0',
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS)
     # We need to issue this command to be able to send further commands.
-    _s.write("AT+DMOCONNECT\r\n")
+    _s.write(b"AT+DMOCONNECT\r\n")
     time.sleep(1.00)
     _response = _s.readline()
-    print("Connect Response: %s" % _response)
+    print("Connect Response: %s" % str(_response))
 
     # Send the programming command..
     _s.write(_dmosetgroup)
@@ -57,7 +57,7 @@ def dra818_program(port='/dev/ttyAMA0',
     _response = _s.readline()
     _s.close()
     
-    print("Response: %s" % _response.strip())
+    print("Response: %s" % str(_response).strip())
 
 
 def dra818_setup_io():
@@ -101,6 +101,7 @@ if __name__ == '__main__':
     dra818_program(args.port, args.frequency)
 
     if args.test:
+        dra818_setup_io()
         dra818_ptt(True)
         time.sleep(1)
         dra818_ptt(False)

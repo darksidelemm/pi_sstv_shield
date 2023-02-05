@@ -15,6 +15,9 @@ from picamera import PiCamera
 from time import sleep
 from threading import Thread
 from dra818 import *
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
 import glob
 import os
 import os.path
@@ -118,7 +121,7 @@ class SSTVPiCam(object):
         This is used mainly to get updates on image capture into the Wenet downlink.
 
         """
-        message = "PiCam Debug: " + message
+        message = datetime.datetime.utcnow().isoformat() + " PiCam Debug: " + message
         if self.debug_ptr != None:
             self.debug_ptr(message)
         else:
@@ -168,24 +171,36 @@ class SSTVPiCam(object):
         return True 
 
 
-    def sstvify(self, filename="output.jpg"):
-        """ Convert a supplied JPEG image to SSTV Audio.
+    def resize(self, filename="output.jpg", dest_filename="picam_temp.png"):
+        """ Resize the supplied image to a resolution suitable for SSTV encoding.
+
+
+        """
+        self.debug_message("Resizing image.")
+        return_code = os.system("convert %s -resize %dx%d\! %s" % (filename, self.tx_resolution[0], self.tx_resolution[1], dest_filename))
+        if return_code != 0:
+            self.debug_message("Resize operation failed!")
+            return False
+        
+        return True
+
+
+    def sstvify(self, filename, temp_filename="picam_temp.png"):
+        """ Convert a supplied PNG image to SSTV Audio.
         Returns the filename of the converted SSTV file.
 
         Keyword Arguments:
-        filename:   Source JPEG filename.
+        filename:   Source PNG filename.
                     Output SSTV image will be saved to to a temporary file (output.wav) which should be
                     transmitted immediately.
 
         """
 
-        self.debug_message("Resizing and converting image.")
-        return_code = os.system("convert %s -resize %dx%d\! picam_temp.png" % (filename, self.tx_resolution[0], self.tx_resolution[1]))
-        if return_code != 0:
-            self.debug_message("Resize operation failed!")
-            return "FAIL"
+        # Copy out file, since pisstv doesnt have an output filename argument...
+        os.system("cp %s %s" % (filename, temp_filename))
 
-        sstv_convert_command = "./pisstv -p %s -r 22050 picam_temp.png" % self.tx_mode
+        # Convert to sstv
+        sstv_convert_command = "./pisstv -p %s -r 22050 %s" % (self.tx_mode, temp_filename)
 
         self.debug_message("Converting image to SSTV.")
         return_code = os.system(sstv_convert_command)
@@ -193,7 +208,7 @@ class SSTVPiCam(object):
             self.debug_message("Failed to convert image to SSTV!")
             return "FAIL"
         else:
-            return "picam_temp.png.wav"
+            return temp_filename + ".wav"
 
 
     def transmit_image(self, filename="output.wav"):
@@ -218,7 +233,7 @@ class SSTVPiCam(object):
 
 
     auto_capture_running = False
-    def auto_capture(self, destination_directory, post_process_ptr=None, post_tx_function=None, delay = 0):
+    def auto_capture(self, destination_directory, post_process_ptr=None, post_process_ptr_small=None, post_tx_function=None, delay = 0):
         """ Automatically capture and transmit images in a loop.
         Images are automatically saved to a supplied directory, with file-names
         defined using a timestamp.
@@ -231,6 +246,10 @@ class SSTVPiCam(object):
                           will be passed the path/filename of the captured image.
                           This can be used to add overlays, etc to the image before it is SSDVified and transmitted.
                           NOTE: This function need to modify the image in-place.
+        post_process_ptr_small: An optional function which is called after the image is captured. This function
+                          will be passed the path/filename of the captured image.
+                          As above, but performed after the image has been resized to the SSTV mode resolution.
+                          NOTE: This function needs to modify the image in-place.
         post_tx_function: An optional function which is called after the image has been transmitted.
         delay:  An optional delay in seconds between capturing images. Defaults to 0.
                 This delay is added on top of any delays caused while waiting for the transmit queue to empty.
@@ -241,31 +260,61 @@ class SSTVPiCam(object):
 
             # Grab current timestamp.
             capture_time = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%SZ")
-            capture_filename = destination_directory + "/%s_picam.jpg" % capture_time
+            capture_filename_full = destination_directory + "/%s_picam.jpg" % capture_time
+            capture_filename_small = destination_directory + "/%s_picam_small.png" % capture_time
 
             # Attempt to capture.
-            capture_successful = self.capture(capture_filename)
+            capture_successful = self.capture(capture_filename_full)
 
-            # If capture was unsuccessful, exit out of this thead, as clearly
-            # the camera isn't working.
+			# If capture was unsuccessful, try again in a little bit
             if not capture_successful:
-                return
+                sleep(5)
+
+                self.debug_message("Capture failed! Attempting to reset camera...")
+
+                try:
+                    self.cam.close()
+                except:
+                    self.debug_message("Closing camera object failed.")
+
+                try:
+                    self.init_camera()
+                except:
+                    self.debug_message("Error initializing camera!")
+                    sleep(1)
+
+                continue
 
             # Otherwise, proceed to post-processing step.
             if post_process_ptr != None:
                 try:
-                    self.debug_message("Running Image Post-Processing")
-                    post_process_ptr(capture_filename)
+                    self.debug_message("Running Image Post-Processing (Full Size)")
+                    post_process_ptr(capture_filename_full)
+                except:
+                    error_str = traceback.format_exc()
+                    self.debug_message("Image Post-Processing Failed: %s" % error_str)
+
+            # Resize the image.
+            resize_successful = self.resize(capture_filename_full, capture_filename_small)
+
+            if not resize_successful:
+                continue
+
+            # Otherwise, proceed to post-processing step.
+            if post_process_ptr_small != None:
+                try:
+                    self.debug_message("Running Image Post-Processing (Resized)")
+                    post_process_ptr_small(capture_filename_small)
                 except:
                     error_str = traceback.format_exc()
                     self.debug_message("Image Post-Processing Failed: %s" % error_str)
 
             # SSTV'ify the image.
-            sstv_filename = self.sstvify(capture_filename)
+            sstv_filename = self.sstvify(capture_filename_small)
 
             # Check the SSDV Conversion has completed properly. If not, break.
             if sstv_filename == "FAIL":
-                return
+                continue
 
             # Transmit the image. TODO: Make this non-blocking.
             self.transmit_image(sstv_filename)
@@ -277,8 +326,10 @@ class SSTVPiCam(object):
             sleep(delay)
         # Loop!
 
+        self.debug_message("Exited auto capture thread!")
 
-    def run(self, destination_directory, post_process_ptr=None, post_tx_function=None, delay = 0):
+
+    def run(self, destination_directory, post_process_ptr=None, post_process_ptr_small=None, post_tx_function=None, delay = 0):
         """ Start auto-capturing images in a thread.
 
         Refer auto_capture function above.
@@ -289,6 +340,10 @@ class SSTVPiCam(object):
                           will be passed the path/filename of the captured image.
                           This can be used to add overlays, etc to the image before it is SSDVified and transmitted.
                           NOTE: This function needs to modify the image in-place.
+        post_process_ptr_small: An optional function which is called after the image is captured. This function
+                          will be passed the path/filename of the captured image.
+                          As above, but performed after the image has been resized to the SSTV mode resolution.
+                          NOTE: This function needs to modify the image in-place.
         delay:  An optional delay in seconds between capturing images. Defaults to 0.
                 This delay is added on top of any delays caused while waiting for the transmit queue to empty.
         """     
@@ -298,6 +353,7 @@ class SSTVPiCam(object):
         capture_thread = Thread(target=self.auto_capture, kwargs=dict(
             destination_directory=destination_directory,
             post_process_ptr=post_process_ptr,
+            post_process_ptr_small=post_process_ptr_small,
             post_tx_function=post_tx_function,
             delay=delay))
 
@@ -311,11 +367,65 @@ class SSTVPiCam(object):
 # Basic transmission test script.
 if __name__ == "__main__":
     import subprocess
+    import ublox
+
+    # Try and start up the GPS rx thread.
+    try:
+        gps = ublox.UBloxGPS(port="/dev/ttyACM0", 
+            dynamic_model = ublox.DYNAMIC_MODEL_AIRBORNE1G, 
+            update_rate_ms = 1000,
+            log_file = 'gps_data.log'
+            )
+    except Exception as e:
+        print("ERROR: Could not Open GPS - %s" % str(e))
+        gps = None
 
     def post_process(filename):
+        # Post-Process the full-size image.
         # Currently not doing anything in post-processing
         # This is where we might add overlays, if we consider it worthwhile.
         pass
+
+    def post_process_small(filename):
+        # Post-Process the resized image
+        global gps
+
+        # Try and grab current GPS data snapshot
+        try:
+            if gps != None:
+                gps_state = gps.read_state()
+                print("Current GPS State: " + str(gps_state))
+
+                # Format time
+                short_time = gps_state['datetime'].strftime("%Y-%m-%d %H:%M:%S")
+
+                # Construct string which we will add onto the image.
+                if gps_state['numSV'] < 3:
+                    # If we don't have enough sats for a lock, don't display any data.
+                    # TODO: Use the GPS fix status values here instead.
+                    gps_string = " HIGH ALTITUDE BALLOON"
+                else:
+                    gps_string = " %.5f, %.5f  %dm Altitude" % (
+                        gps_state['latitude'],
+                        gps_state['longitude'],
+                        int(gps_state['altitude']))
+            else:
+                gps_string = " HIGH ALTITUDE BALLOON"
+        except:
+            error_str = traceback.format_exc()
+            print("GPS Data Access Failed: %s" % error_str)
+            gps_string = " HIGH ALTITUDE BALLOON"
+
+
+        # Add text overlay.
+        textoverlay="VK5ARG " + gps_string
+        print("Adding text overlay: " + textoverlay)
+        img = Image.open(filename)
+        I1 = ImageDraw.Draw(img)
+        overlayFont = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf', 18)
+        I1.rectangle([(0,0),(639,20)], fill=(0,0,0), outline=None)
+        I1.text((20, 1), "%s" % (textoverlay), font=overlayFont, fill=(255, 255, 255))
+        img.save(filename)
 
     # Transmit ident.wav every 4th image, if it exists.
     tx_count = 0
@@ -354,6 +464,7 @@ if __name__ == "__main__":
 
     picam.run(destination_directory="./tx_images/",
         post_process_ptr = post_process,
+        post_process_ptr_small = post_process_small,
         post_tx_function = post_tx,
         delay = 15
         )
